@@ -53,7 +53,11 @@ navigateur (public/)  ──POST /api/chat──▶  src/server.ts  ──▶  S
 - `GET /api/stats` renvoie `{ "total", "due" }` (éléments appris / à réviser aujourd'hui).
 - `POST /api/items` ajoute **toi-même** un élément à réviser :
   `{ "kind": "vocabulary"|"phrasal verb"|"expression", "term", "definition", "example" }`
-  → `201 { "added": true }` (ou `200 { "added": false }` si déjà connu).
+  → `201 { "added": true, item }` (ou `200 { "added": false }` si déjà connu).
+  Si `MISTRAL_API_KEY` est définie, l'élément est enrichi par l'IA
+  (`mistral-small-latest`) : `translation` (traduction française de la définition)
+  et `examples` (quelques phrases d'utilisation). Sans clé ou en cas d'échec,
+  l'élément est enregistré tel quel.
 - `GET /api/items` liste tous les acquis (avec un indicateur « à réviser »).
 - `DELETE /api/items/:id` supprime un élément.
 

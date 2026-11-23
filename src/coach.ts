@@ -2,6 +2,16 @@ import type { LearnItem } from "./memory.js";
 
 export const MODEL = "mistral-small-latest";
 
+export function extractText(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((c) => (c && typeof c === "object" && (c as { type?: string }).type === "text" ? String((c as { text?: unknown }).text ?? "") : ""))
+      .join("");
+  }
+  return "";
+}
+
 export function buildSystemPrompt(due: LearnItem[]): string {
   const reviewSection = due.length
     ? `## Review time (spaced repetition)

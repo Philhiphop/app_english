@@ -212,6 +212,8 @@ h1 { font-size: 1.25rem; margin: 0; }
 
 .item-def { margin-top: 4px; }
 
+.item-tr { margin-top: 2px; color: #1c4fd8; font-size: 0.82rem; }
+
 .item-ex { margin-top: 2px; color: #65676b; font-style: italic; }
 
 .toast {

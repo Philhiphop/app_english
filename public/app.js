@@ -126,11 +126,26 @@ function renderItems(items) {
     const def = document.createElement("div");
     def.className = "item-def";
     def.textContent = it.definition;
-    const ex = document.createElement("div");
-    ex.className = "item-ex";
-    ex.textContent = "ex. " + it.example;
 
-    row.append(head, def, ex);
+    row.append(head, def);
+
+    if (it.translation) {
+      const tr = document.createElement("div");
+      tr.className = "item-tr";
+      tr.textContent = "🇫🇷 " + it.translation;
+      row.appendChild(tr);
+    }
+
+    const allExamples = [it.example, ...(Array.isArray(it.examples) ? it.examples : [])].filter(Boolean);
+    const seen = new Set();
+    for (const e of allExamples) {
+      if (seen.has(e)) continue;
+      seen.add(e);
+      const ex = document.createElement("div");
+      ex.className = "item-ex";
+      ex.textContent = "ex. " + e;
+      row.appendChild(ex);
+    }
     itemsEl.appendChild(row);
   }
 }

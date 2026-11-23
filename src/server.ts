@@ -4,7 +4,8 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Mistral } from "@mistralai/mistralai";
-import { MODEL, buildSystemPrompt } from "./coach.js";
+import { MODEL, buildSystemPrompt, extractText } from "./coach.js";
+import { enrichItem } from "./enrich.js";
 import { addNewItems, deleteItem, dueItems, listItems, normalizeKind, parseLearnMarkers, rescheduleAll, stats, type ItemKind } from "./memory.js";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
@@ -65,16 +66,6 @@ function sanitizeMessages(input: unknown): ChatMessage[] | null {
     if (text) cleaned.push({ role, content: text });
   }
   return cleaned.length > 0 ? cleaned : null;
-}
-
-function extractText(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((c) => (c && typeof c === "object" && (c as { type?: string }).type === "text" ? String((c as { text?: unknown }).text ?? "") : ""))
-      .join("");
-  }
-  return "";
 }
 
 async function handleChat(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -142,8 +133,23 @@ async function handleAddItem(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
   const kind: ItemKind = normalizeKind(rawKind);
-  const added = addNewItems([{ kind, term, definition, example }]);
-  sendJson(res, added > 0 ? 201 : 200, { added: added > 0, stats: stats() });
+  let translation: string | undefined;
+  let examples: string[] | undefined;
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (apiKey) {
+    try {
+      const enrichment = await enrichItem(apiKey, kind, term, definition);
+      if (enrichment) {
+        translation = enrichment.translation || undefined;
+        examples = enrichment.examples.length > 0 ? enrichment.examples : undefined;
+      }
+    } catch {
+      // Enrichissement facultatif : on enregistre l'élément même si l'appel échoue.
+    }
+  }
+  const added = addNewItems([{ kind, term, definition, example, translation, examples }]);
+  const item = listItems().find((i) => i.term.toLowerCase() === term.toLowerCase());
+  sendJson(res, added > 0 ? 201 : 200, { added: added > 0, item, stats: stats() });
 }
 
 async function handleStatic(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {

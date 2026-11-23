@@ -10,13 +10,16 @@ export interface LearnItem {
   term: string;
   definition: string;
   example: string;
+  translation?: string;
+  examples?: string[];
   createdAt: number;
   dueAt: number;
   intervalDays: number;
   reviews: number;
 }
 
-export type NewItem = Pick<LearnItem, "kind" | "term" | "definition" | "example">;
+export type NewItem = Pick<LearnItem, "kind" | "term" | "definition" | "example"> &
+  Partial<Pick<LearnItem, "translation" | "examples">>;
 
 const SCHEDULE_DAYS = [1, 3, 7, 14, 30, 90];
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -78,6 +81,8 @@ export function addNewItems(items: NewItem[], now = Date.now()): number {
       term: item.term,
       definition: item.definition,
       example: item.example,
+      translation: item.translation,
+      examples: item.examples,
       createdAt: now,
       dueAt: now + SCHEDULE_DAYS[0] * DAY_MS,
       intervalDays: SCHEDULE_DAYS[0],
