@@ -5,7 +5,7 @@ import { extname, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Mistral } from "@mistralai/mistralai";
 import { MODEL, buildSystemPrompt } from "./coach.js";
-import { addNewItems, dueItems, parseLearnMarkers, rescheduleAll, stats } from "./memory.js";
+import { addNewItems, deleteItem, dueItems, listItems, normalizeKind, parseLearnMarkers, rescheduleAll, stats, type ItemKind } from "./memory.js";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_DIR = join(HERE, "..", "public");
@@ -120,6 +120,32 @@ async function handleChat(req: IncomingMessage, res: ServerResponse): Promise<vo
   sendJson(res, 200, { reply: clean, saved, reviewed: due.length, stats: stats(now) });
 }
 
+const KIND_PATTERN = /phrasal|vocab|expression|idiom/i;
+
+async function handleAddItem(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(await readBody(req));
+  } catch {
+    sendJson(res, 400, { error: "Corps de requête JSON invalide." });
+    return;
+  }
+  const p = (payload ?? {}) as Record<string, unknown>;
+  const rawKind = String(p.kind ?? "");
+  const term = String(p.term ?? "").trim().slice(0, 120);
+  const definition = String(p.definition ?? "").trim().slice(0, 500);
+  const example = String(p.example ?? "").trim().slice(0, 500);
+  if (!KIND_PATTERN.test(rawKind) || !term || !definition || !example) {
+    sendJson(res, 400, {
+      error: "Champs requis : kind (vocabulary | phrasal verb | expression), term, definition, example (tous non vides).",
+    });
+    return;
+  }
+  const kind: ItemKind = normalizeKind(rawKind);
+  const added = addNewItems([{ kind, term, definition, example }]);
+  sendJson(res, added > 0 ? 201 : 200, { added: added > 0, stats: stats() });
+}
+
 async function handleStatic(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
   let pathname = decodeURIComponent(url.pathname);
   if (pathname === "/") pathname = "/index.html";
@@ -148,6 +174,23 @@ const server = createServer((req, res) => {
   }
   if (req.method === "GET" && url.pathname === "/api/stats") {
     sendJson(res, 200, stats());
+    return;
+  }
+  if (req.method === "POST" && url.pathname === "/api/items") {
+    handleAddItem(req, res).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : "Erreur interne";
+      sendJson(res, 500, { error: message });
+    });
+    return;
+  }
+  if (req.method === "GET" && url.pathname === "/api/items") {
+    sendJson(res, 200, { items: listItems() });
+    return;
+  }
+  if (req.method === "DELETE" && url.pathname.startsWith("/api/items/")) {
+    const id = decodeURIComponent(url.pathname.slice("/api/items/".length));
+    const deleted = id.length > 0 && deleteItem(id);
+    sendJson(res, deleted ? 200 : 404, { deleted });
     return;
   }
   if (req.method === "GET") {

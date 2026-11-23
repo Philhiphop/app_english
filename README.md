@@ -51,6 +51,15 @@ navigateur (public/)  ──POST /api/chat──▶  src/server.ts  ──▶  S
 - `POST /api/chat` attend `{ "messages": [{ "role": "user"|"assistant", "content": "..." }] }`
   et renvoie `{ "reply", "saved", "reviewed", "stats" }`.
 - `GET /api/stats` renvoie `{ "total", "due" }` (éléments appris / à réviser aujourd'hui).
+- `POST /api/items` ajoute **toi-même** un élément à réviser :
+  `{ "kind": "vocabulary"|"phrasal verb"|"expression", "term", "definition", "example" }`
+  → `201 { "added": true }` (ou `200 { "added": false }` si déjà connu).
+- `GET /api/items` liste tous les acquis (avec un indicateur « à réviser »).
+- `DELETE /api/items/:id` supprime un élément.
+
+Dans l'interface, le panneau **« 📖 Mes acquis »** (sous les suggestions) permet d'ajouter
+vocabulaire, phrasal verbs et expressions à la main ; ils entrent dans la même mémoire
+à répétition espacée et le coach te les fera réviser au même titre que ceux qu'il enseigne.
 
 ## Comment fonctionne la mémorisation
 

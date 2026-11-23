@@ -39,7 +39,7 @@ function persist(items: LearnItem[]): void {
   writeFileSync(STORE_FILE, JSON.stringify(items, null, 2), "utf8");
 }
 
-function normalizeKind(raw: string): ItemKind {
+export function normalizeKind(raw: string): ItemKind {
   const k = raw.toLowerCase();
   if (k.includes("phrasal")) return "phrasal verb";
   if (k.includes("vocab")) return "vocabulary";
@@ -109,4 +109,18 @@ export function rescheduleAll(due: LearnItem[], now = Date.now()): void {
 export function stats(now = Date.now()): { total: number; due: number } {
   const all = loadAll();
   return { total: all.length, due: all.filter((i) => i.dueAt <= now).length };
+}
+
+export function listItems(now = Date.now()): Array<LearnItem & { due: boolean }> {
+  return loadAll()
+    .map((i) => ({ ...i, due: i.dueAt <= now }))
+    .sort((a, b) => Number(b.due) - Number(a.due) || a.dueAt - b.dueAt);
+}
+
+export function deleteItem(id: string): boolean {
+  const all = loadAll();
+  const next = all.filter((i) => i.id !== id);
+  if (next.length === all.length) return false;
+  persist(next);
+  return true;
 }
