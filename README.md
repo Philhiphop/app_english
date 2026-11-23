@@ -59,11 +59,14 @@ navigateur (public/)  ──POST /api/chat──▶  src/server.ts  ──▶  S
   et `examples` (quelques phrases d'utilisation). Sans clé ou en cas d'échec,
   l'élément est enregistré tel quel.
 - `GET /api/items` liste tous les acquis (avec un indicateur « à réviser »).
+- `PUT /api/items/:id` modifie un élément (mêmes champs que POST ; si le terme ou la
+  définition change, l'IA regénère la traduction et les exemples).
 - `DELETE /api/items/:id` supprime un élément.
 
-Dans l'interface, le panneau **« 📖 Mes acquis »** (sous les suggestions) permet d'ajouter
-vocabulaire, phrasal verbs et expressions à la main ; ils entrent dans la même mémoire
-à répétition espacée et le coach te les fera réviser au même titre que ceux qu'il enseigne.
+Dans l'interface, le panneau **« 📖 Mes acquis »** (sous les suggestions) permet d'ajouter,
+modifier (✏️) et supprimer (✕) soi-même vocabulaire, phrasal verbs et expressions ; ils entrent
+dans la même mémoire à répétition espacée et le coach te les fera réviser au même titre que
+ceux qu'il enseigne.
 
 ## Comment fonctionne la mémorisation
 

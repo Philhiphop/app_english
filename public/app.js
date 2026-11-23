@@ -6,6 +6,32 @@ const toast = document.getElementById("toast");
 const itemForm = document.getElementById("item-form");
 const itemsEl = document.getElementById("items");
 const itemsCount = document.getElementById("items-count");
+const itemSubmit = document.getElementById("item-submit");
+const itemCancel = document.getElementById("item-cancel");
+const panel = document.getElementById("panel");
+
+let editingId = null;
+
+function cancelEdit() {
+  editingId = null;
+  itemForm.reset();
+  itemSubmit.textContent = "Ajouter";
+  itemCancel.hidden = true;
+}
+
+function startEdit(it) {
+  editingId = it.id;
+  document.getElementById("item-kind").value = it.kind;
+  document.getElementById("item-term").value = it.term;
+  document.getElementById("item-def").value = it.definition;
+  document.getElementById("item-ex").value = it.example;
+  itemSubmit.textContent = "Enregistrer";
+  itemCancel.hidden = false;
+  panel.open = true;
+  document.getElementById("item-term").focus();
+}
+
+itemCancel.addEventListener("click", cancelEdit);
 
 const history = [];
 
@@ -111,6 +137,12 @@ function renderItems(items) {
     const dueTag = document.createElement("span");
     dueTag.className = "due-tag";
     dueTag.textContent = it.due ? "🔁 à réviser" : "📅 " + new Date(it.dueAt).toLocaleDateString("fr-FR");
+    const edit = document.createElement("button");
+    edit.className = "del";
+    edit.type = "button";
+    edit.textContent = "✏️";
+    edit.title = "Modifier";
+    edit.addEventListener("click", () => startEdit(it));
     const del = document.createElement("button");
     del.className = "del";
     del.type = "button";
@@ -121,7 +153,7 @@ function renderItems(items) {
       loadItems();
       refreshStats();
     });
-    head.append(kind, term, dueTag, del);
+    head.append(kind, term, dueTag, edit, del);
 
     const def = document.createElement("div");
     def.className = "item-def";
@@ -159,15 +191,16 @@ itemForm.addEventListener("submit", async (e) => {
     example: document.getElementById("item-ex").value,
   };
   try {
-    const res = await fetch("/api/items", {
-      method: "POST",
+    const isEdit = editingId !== null;
+    const res = await fetch(isEdit ? "/api/items/" + encodeURIComponent(editingId) : "/api/items", {
+      method: isEdit ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Erreur serveur");
-    showToast(data.added ? "📌 Ajouté à ta révision espacée" : "ℹ️ Déjà dans tes acquis");
-    itemForm.reset();
+    showToast(isEdit ? "✅ Modifié" : data.added ? "📌 Ajouté à ta révision espacée" : "ℹ️ Déjà dans tes acquis");
+    cancelEdit();
     loadItems();
     refreshStats();
   } catch (err) {

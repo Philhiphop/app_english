@@ -129,3 +129,20 @@ export function deleteItem(id: string): boolean {
   persist(next);
   return true;
 }
+
+export function updateItem(id: string, patch: NewItem): LearnItem | null {
+  const all = loadAll();
+  const idx = all.findIndex((i) => i.id === id);
+  if (idx === -1) return null;
+  all[idx] = {
+    ...all[idx],
+    kind: patch.kind,
+    term: patch.term,
+    definition: patch.definition,
+    example: patch.example,
+    translation: patch.translation,
+    examples: patch.examples,
+  };
+  persist(all);
+  return all[idx];
+}

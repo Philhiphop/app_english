@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { Mistral } from "@mistralai/mistralai";
 import { MODEL, buildSystemPrompt, extractText } from "./coach.js";
 import { enrichItem } from "./enrich.js";
-import { addNewItems, deleteItem, dueItems, listItems, normalizeKind, parseLearnMarkers, rescheduleAll, stats, type ItemKind } from "./memory.js";
+import { addNewItems, deleteItem, dueItems, listItems, normalizeKind, parseLearnMarkers, rescheduleAll, stats, updateItem, type ItemKind, type NewItem } from "./memory.js";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const PUBLIC_DIR = join(HERE, "..", "public");
@@ -113,6 +113,38 @@ async function handleChat(req: IncomingMessage, res: ServerResponse): Promise<vo
 
 const KIND_PATTERN = /phrasal|vocab|expression|idiom/i;
 
+function parseItemPayload(payload: unknown): NewItem | null {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  const rawKind = String(p.kind ?? "");
+  const term = String(p.term ?? "").trim().slice(0, 120);
+  const definition = String(p.definition ?? "").trim().slice(0, 500);
+  const example = String(p.example ?? "").trim().slice(0, 500);
+  if (!KIND_PATTERN.test(rawKind) || !term || !definition || !example) return null;
+  return { kind: normalizeKind(rawKind), term, definition, example };
+}
+
+async function enrichIfNeeded(
+  existing: { term: string; definition: string; translation?: string; examples?: string[] } | null,
+  next: NewItem,
+): Promise<{ translation?: string; examples?: string[] }> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) return { translation: existing?.translation, examples: existing?.examples };
+  const changed = !existing || existing.term.toLowerCase() !== next.term.toLowerCase() || existing.definition !== next.definition;
+  if (!changed) return { translation: existing?.translation, examples: existing?.examples };
+  try {
+    const enrichment = await enrichItem(apiKey, next.kind, next.term, next.definition);
+    if (enrichment) {
+      return {
+        translation: enrichment.translation || undefined,
+        examples: enrichment.examples.length > 0 ? enrichment.examples : undefined,
+      };
+    }
+  } catch {
+    // Enrichissement facultatif : on conserve l'ancien contenu si l'appel échoue.
+  }
+  return { translation: existing?.translation, examples: existing?.examples };
+}
+
 async function handleAddItem(req: IncomingMessage, res: ServerResponse): Promise<void> {
   let payload: unknown;
   try {
@@ -121,35 +153,42 @@ async function handleAddItem(req: IncomingMessage, res: ServerResponse): Promise
     sendJson(res, 400, { error: "Corps de requête JSON invalide." });
     return;
   }
-  const p = (payload ?? {}) as Record<string, unknown>;
-  const rawKind = String(p.kind ?? "");
-  const term = String(p.term ?? "").trim().slice(0, 120);
-  const definition = String(p.definition ?? "").trim().slice(0, 500);
-  const example = String(p.example ?? "").trim().slice(0, 500);
-  if (!KIND_PATTERN.test(rawKind) || !term || !definition || !example) {
+  const parsed = parseItemPayload(payload);
+  if (!parsed) {
     sendJson(res, 400, {
       error: "Champs requis : kind (vocabulary | phrasal verb | expression), term, definition, example (tous non vides).",
     });
     return;
   }
-  const kind: ItemKind = normalizeKind(rawKind);
-  let translation: string | undefined;
-  let examples: string[] | undefined;
-  const apiKey = process.env.MISTRAL_API_KEY;
-  if (apiKey) {
-    try {
-      const enrichment = await enrichItem(apiKey, kind, term, definition);
-      if (enrichment) {
-        translation = enrichment.translation || undefined;
-        examples = enrichment.examples.length > 0 ? enrichment.examples : undefined;
-      }
-    } catch {
-      // Enrichissement facultatif : on enregistre l'élément même si l'appel échoue.
-    }
-  }
-  const added = addNewItems([{ kind, term, definition, example, translation, examples }]);
-  const item = listItems().find((i) => i.term.toLowerCase() === term.toLowerCase());
+  const { translation, examples } = await enrichIfNeeded(null, parsed);
+  const added = addNewItems([{ ...parsed, translation, examples }]);
+  const item = listItems().find((i) => i.term.toLowerCase() === parsed.term.toLowerCase());
   sendJson(res, added > 0 ? 201 : 200, { added: added > 0, item, stats: stats() });
+}
+
+async function handleUpdateItem(req: IncomingMessage, res: ServerResponse, id: string): Promise<void> {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(await readBody(req));
+  } catch {
+    sendJson(res, 400, { error: "Corps de requête JSON invalide." });
+    return;
+  }
+  const parsed = parseItemPayload(payload);
+  if (!parsed) {
+    sendJson(res, 400, {
+      error: "Champs requis : kind (vocabulary | phrasal verb | expression), term, definition, example (tous non vides).",
+    });
+    return;
+  }
+  const existing = listItems().find((i) => i.id === id);
+  if (!existing) {
+    sendJson(res, 404, { error: "Élément introuvable." });
+    return;
+  }
+  const { translation, examples } = await enrichIfNeeded(existing, parsed);
+  const item = updateItem(id, { ...parsed, translation, examples });
+  sendJson(res, 200, { item, stats: stats() });
 }
 
 async function handleStatic(req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
@@ -193,11 +232,24 @@ const server = createServer((req, res) => {
     sendJson(res, 200, { items: listItems() });
     return;
   }
-  if (req.method === "DELETE" && url.pathname.startsWith("/api/items/")) {
+  if (url.pathname.startsWith("/api/items/")) {
     const id = decodeURIComponent(url.pathname.slice("/api/items/".length));
-    const deleted = id.length > 0 && deleteItem(id);
-    sendJson(res, deleted ? 200 : 404, { deleted });
-    return;
+    if (req.method === "DELETE") {
+      const deleted = id.length > 0 && deleteItem(id);
+      sendJson(res, deleted ? 200 : 404, { deleted });
+      return;
+    }
+    if (req.method === "PUT" || req.method === "PATCH") {
+      if (!id) {
+        sendJson(res, 400, { error: "ID manquant." });
+        return;
+      }
+      handleUpdateItem(req, res, id).catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : "Erreur interne";
+        sendJson(res, 500, { error: message });
+      });
+      return;
+    }
   }
   if (req.method === "GET") {
     void handleStatic(req, res, url);
