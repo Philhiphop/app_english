@@ -119,8 +119,9 @@ function parseItemPayload(payload: unknown): NewItem | null {
   const term = String(p.term ?? "").trim().slice(0, 120);
   const definition = String(p.definition ?? "").trim().slice(0, 500);
   const example = String(p.example ?? "").trim().slice(0, 500);
+  const notes = String(p.notes ?? "").trim().slice(0, 1000);
   if (!KIND_PATTERN.test(rawKind) || !term || !definition || !example) return null;
-  return { kind: normalizeKind(rawKind), term, definition, example };
+  return { kind: normalizeKind(rawKind), term, definition, example, notes: notes || undefined };
 }
 
 async function enrichIfNeeded(

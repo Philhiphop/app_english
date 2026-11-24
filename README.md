@@ -52,7 +52,9 @@ navigateur (public/)  ──POST /api/chat──▶  src/server.ts  ──▶  S
   et renvoie `{ "reply", "saved", "reviewed", "stats" }`.
 - `GET /api/stats` renvoie `{ "total", "due" }` (éléments appris / à réviser aujourd'hui).
 - `POST /api/items` ajoute **toi-même** un élément à réviser :
-  `{ "kind": "vocabulary"|"phrasal verb"|"expression", "term", "definition", "example" }`
+  `{ "kind": "vocabulary"|"phrasal verb"|"expression", "term", "definition", "example", "notes"? }`
+  (`notes` = champ « Commentaires » libre, optionnel, 1000 caractères max ; il est aussi
+  transmis au coach lors des révisions de l'élément).
   → `201 { "added": true, item }` (ou `200 { "added": false }` si déjà connu).
   Si `MISTRAL_API_KEY` est définie, l'élément est enrichi par l'IA
   (`mistral-small-latest`) : `translation` (traduction française de la définition)

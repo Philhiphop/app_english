@@ -16,7 +16,7 @@ export function buildSystemPrompt(due: LearnItem[]): string {
   const reviewSection = due.length
     ? `## Review time (spaced repetition)
 These items were learned in previous sessions and are due for review NOW. Start the conversation by reviewing them: ask the learner to use each term in a sentence of their own (or to explain its meaning), give gentle feedback, then continue naturally.
-${due.map((i) => `- [${i.kind}] "${i.term}" — ${i.definition} | example: ${i.example}`).join("\n")}`
+${due.map((i) => `- [${i.kind}] "${i.term}" — ${i.definition} | example: ${i.example}${i.notes ? ` | learner notes: ${i.notes}` : ""}`).join("\n")}`
     : `## Review time (spaced repetition)
 No items are due for review in this session. If the learner asks to review, pick a few previously learned items at random and quiz them.`;
 

@@ -25,6 +25,7 @@ function startEdit(it) {
   document.getElementById("item-term").value = it.term;
   document.getElementById("item-def").value = it.definition;
   document.getElementById("item-ex").value = it.example;
+  document.getElementById("item-notes").value = it.notes || "";
   itemSubmit.textContent = "Enregistrer";
   itemCancel.hidden = false;
   panel.open = true;
@@ -168,6 +169,13 @@ function renderItems(items) {
       row.appendChild(tr);
     }
 
+    if (it.notes) {
+      const nt = document.createElement("div");
+      nt.className = "item-notes";
+      nt.textContent = "📝 " + it.notes;
+      row.appendChild(nt);
+    }
+
     const allExamples = [it.example, ...(Array.isArray(it.examples) ? it.examples : [])].filter(Boolean);
     const seen = new Set();
     for (const e of allExamples) {
@@ -189,6 +197,7 @@ itemForm.addEventListener("submit", async (e) => {
     term: document.getElementById("item-term").value,
     definition: document.getElementById("item-def").value,
     example: document.getElementById("item-ex").value,
+    notes: document.getElementById("item-notes").value,
   };
   try {
     const isEdit = editingId !== null;
