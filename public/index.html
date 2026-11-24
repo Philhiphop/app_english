@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coach d'anglais — Mistral</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>🇬🇧 Coach d'anglais <span class="level">B2</span></h1>
+        <p class="subtitle">Vocabulaire · phrasal verbs · expressions · révision espacée</p>
+      </div>
+      <span id="badge" class="badge">📚 0 appris · 🔁 0 à réviser</span>
+    </header>
+
+    <div id="log" class="log" aria-live="polite"></div>
+
+    <div class="chips">
+      <button class="chip" data-say="Donne-moi un phrasal verb utile aujourd'hui">Un phrasal verb</button>
+      <button class="chip" data-say="Apprends-moi une expression idiomatique naturelle">Une expression</button>
+      <button class="chip" data-say="Révise avec moi ce que j'ai appris avant">Réviser mes acquis</button>
+      <button class="chip" data-say="Fais-moi pratiquer : je te raconte ma journée en anglais">Pratiquer</button>
+    </div>
+
+    <details class="panel" id="panel">
+      <summary>📖 Mes acquis <span id="items-count"></span> · ➕ ajouter un élément</summary>
+      <form id="item-form" class="item-form">
+        <select id="item-kind">
+          <option value="vocabulary">vocabulaire</option>
+          <option value="phrasal verb">phrasal verb</option>
+          <option value="expression">expression</option>
+        </select>
+        <input id="item-term" type="text" placeholder="terme (ex. look up)" maxlength="120" required>
+        <input id="item-def" type="text" placeholder="définition en anglais" maxlength="500" required>
+        <input id="item-ex" type="text" placeholder="exemple de phrase" maxlength="500" required>
+        <textarea id="item-notes" placeholder="commentaires (optionnel)" maxlength="1000" rows="2"></textarea>
+        <button type="submit" id="item-submit">Ajouter</button>
+        <button type="button" id="item-cancel" hidden>Annuler</button>
+      </form>
+      <div id="items" class="items"></div>
+    </details>
+
+    <form id="form" class="composer">
+      <input id="input" type="text" autocomplete="off" placeholder="Écris en anglais…" autofocus>
+      <button type="submit">Envoyer</button>
+    </form>
+
+    <div id="toast" class="toast" hidden></div>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
